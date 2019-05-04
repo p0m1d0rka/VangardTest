@@ -1,0 +1,37 @@
+version: '2.1'
+services:
+  postgres:
+    environment:
+      - POSTGRES_PASSWORD=
+      - POSTGRES_DB=sample_rails_app_development
+      - POSTGRES_USER=postgres
+    image: postgres
+    volumes:
+      - postgres_dev:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    healthcheck:
+        # test: ["CMD", "curl", "-f", "http://localhost:5432"]
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: 30s
+        timeout: 10s
+        retries: 10     
+
+
+  dev01:
+    image: p0m1d0rka/sample_rails_app:v.2.0.1
+    container_name: dev01
+    environment:
+      - RAILS_ENV=development
+      - DB_HOST=postgres
+      - SAMPLE_RAILS_APP_DATABASE_PASSWORD=
+    ports:
+      - "3001:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./log/dev01:/app/log
+
+volumes:
+  postgres_dev:
