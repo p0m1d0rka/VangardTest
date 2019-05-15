@@ -1,0 +1,91 @@
+version: '2.1'
+services:
+  postgres:
+    environment:
+      - POSTGRES_PASSWORD=12345
+      - POSTGRES_DB=sample_rails_app_production
+      - POSTGRES_USER=sample_rails_app
+    image: postgres
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    healthcheck:
+        # test: ["CMD", "curl", "-f", "http://localhost:5432"]
+        test: ["CMD-SHELL", "pg_isready -U postgres"]
+        interval: 30s
+        timeout: 10s
+        retries: 10     
+
+
+  web01:
+    image: p0m1d0rka/sample_rails_app:v.2.0.1
+    container_name: web01
+    environment:
+      - DB_HOST=postgres
+      - SAMPLE_RAILS_APP_DATABASE_PASSWORD=12345
+    ports:
+      - "3001:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - public:/app/public
+      - ./log/web01:/app/log
+
+  web02:
+    image: p0m1d0rka/sample_rails_app:v.2.0.1
+    container_name: web02
+    environment:
+      - DB_HOST=postgres
+      - SAMPLE_RAILS_APP_DATABASE_PASSWORD=12345
+    ports:
+      - "3002:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      web01:
+        condition: service_started
+    volumes:
+      - public:/app/public
+      - ./log/web02:/app/log
+
+  web03:
+    image: p0m1d0rka/sample_rails_app:v.2.0.1
+    container_name: web03
+    environment:
+      - DB_HOST=postgres
+      - SAMPLE_RAILS_APP_DATABASE_PASSWORD=12345
+    ports:
+      - "3003:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy   
+      web01:
+        condition: service_started
+      web02:
+        condition: service_started                     
+    volumes:
+      - public:/app/public 
+      - ./log/web03:/app/log               
+
+  nginx: 
+    image: nginx:latest
+    volumes: 
+      - ./nginx.conf:/etc/nginx/nginx.conf 
+      - ./log/nginx:/var/log/nginx/
+      - public:/var/www/app/public
+    ports:
+      - 80:80
+    depends_on:
+      - web01
+      - web02
+      - web03
+    links:
+      - web01
+      - web02
+      - web03
+
+volumes:
+  postgres:
+  public:
